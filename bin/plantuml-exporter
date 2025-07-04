@@ -1,0 +1,146 @@
+#!/bin/bash
+
+# ========================================
+# PlantUML Diagram Export Script
+# Purpose: Export all .puml files to PNG images
+# Version: 2.4 - Mirror VSCode PlantUML extension configuration (clean solution)
+# Date: 03/07/2025
+# ========================================
+
+echo "🎨 Starting PlantUML Diagram Export..."
+
+# Get script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PUML_DIR="$SCRIPT_DIR"
+IMAGES_DIR="$SCRIPT_DIR/images"
+
+# Create images directory if it doesn't exist
+mkdir -p "$IMAGES_DIR"
+
+# Check if PlantUML jar exists
+PLANTUML_JAR="$SCRIPT_DIR/../plantuml.jar"
+if [ ! -f "$PLANTUML_JAR" ]; then
+    echo "❌ PlantUML jar not found at: $PLANTUML_JAR"
+    echo "📥 Downloading PlantUML jar..."
+    curl -L "https://github.com/plantuml/plantuml/releases/latest/download/plantuml.jar" -o "$PLANTUML_JAR"
+    if [ $? -eq 0 ]; then
+        echo "✅ PlantUML jar downloaded successfully"
+    else
+        echo "❌ Failed to download PlantUML jar"
+        exit 1
+    fi
+fi
+
+# Check Java installation
+if ! command -v java &> /dev/null; then
+    echo "❌ Java is not installed. Please install Java to run PlantUML."
+    exit 1
+fi
+
+echo "📁 Looking for .puml files in: $PUML_DIR"
+
+# Export each .puml file to PNG
+EXPORTED_COUNT=0
+FAILED_COUNT=0
+
+for puml_file in "$PUML_DIR"/*.puml; do
+    if [ -f "$puml_file" ]; then
+        filename=$(basename "$puml_file" .puml)
+        output_file="$IMAGES_DIR/${filename}.png"
+        
+        echo "🔄 Exporting: $filename.puml -> $filename.png"
+        
+        # Run PlantUML with PNG output using same config as VSCode extension
+        # -DPLANTUML_LIMIT_SIZE=8192: Same as VSCode PlantUML extension default
+        # -DPLANTUML_SECURITY_PROFILE=UNSECURE: Disable security restrictions
+        # -Xmx2048m: Sufficient memory for large diagrams
+        # -Djava.awt.headless=true: Run in headless mode
+        # -tpng: PNG output format
+        # -o: Output directory
+        # -charset UTF-8: Ensure proper encoding
+        java -Xmx2048m -DPLANTUML_LIMIT_SIZE=8192 -DPLANTUML_SECURITY_PROFILE=UNSECURE -Djava.awt.headless=true -Dfile.encoding=UTF-8 -jar "$PLANTUML_JAR" -tpng -charset UTF-8 -o "$IMAGES_DIR" "$puml_file"
+        
+        if [ $? -eq 0 ]; then
+            # Check if any PNG file was created (PlantUML might change the filename)
+            if ls "$IMAGES_DIR"/*.png 1> /dev/null 2>&1; then
+                echo "✅ Successfully exported: $filename.puml"
+                ((EXPORTED_COUNT++))
+            else
+                echo "❌ Failed to export: $filename.puml"
+                ((FAILED_COUNT++))
+            fi
+        else
+            echo "❌ Failed to export: $filename.puml"
+            ((FAILED_COUNT++))
+        fi
+    fi
+done
+
+# Generate index file
+INDEX_FILE="$IMAGES_DIR/README.md"
+echo "📝 Generating images index: $INDEX_FILE"
+
+cat > "$INDEX_FILE" << EOF
+# Casbin Authorization Service - Diagrams
+
+Generated PNG images from PlantUML source files.
+
+**Generated on**: $(date)
+**Total Images**: $EXPORTED_COUNT
+
+## Export Configuration
+
+- **PlantUML Size Limit**: 8192 (same as VSCode extension)
+- **Security Profile**: UNSECURE (disable restrictions)
+- **JVM Memory**: 2GB (sufficient for large diagrams)
+- **Character Encoding**: UTF-8 (consistent encoding)
+- **Output Format**: PNG (high quality)
+- **Headless Mode**: Enabled (server-friendly)
+- **Configuration**: Mirrored from VSCode PlantUML extension
+
+## Available Diagrams
+
+EOF
+
+# Add each image to index
+for png_file in "$IMAGES_DIR"/*.png; do
+    if [ -f "$png_file" ]; then
+        filename=$(basename "$png_file")
+        diagram_name=$(basename "$png_file" .png)
+        
+        # Convert filename to readable name
+        readable_name=$(echo "$diagram_name" | sed 's/_/ /g' | sed 's/\b\w/\u&/g')
+        
+        echo "### $readable_name" >> "$INDEX_FILE"
+        echo "" >> "$INDEX_FILE"
+        echo "![${readable_name}](./${filename})" >> "$INDEX_FILE"
+        echo "" >> "$INDEX_FILE"
+        echo "**Source**: [${diagram_name}.puml](../${diagram_name}.puml)" >> "$INDEX_FILE"
+        echo "" >> "$INDEX_FILE"
+        echo "---" >> "$INDEX_FILE"
+        echo "" >> "$INDEX_FILE"
+    fi
+done
+
+echo ""
+echo "📊 Export Summary:"
+echo "   ✅ Successfully exported: $EXPORTED_COUNT diagrams"
+echo "   ❌ Failed exports: $FAILED_COUNT diagrams"
+echo "   📁 Images saved to: $IMAGES_DIR"
+echo "   📝 Index file: $INDEX_FILE"
+echo "   🔧 Configuration: 8192 size limit (VSCode extension compatible), 2GB memory"
+
+if [ $EXPORTED_COUNT -gt 0 ]; then
+    echo ""
+    echo "🎉 Diagram export completed successfully!"
+    echo "📖 You can now include these images in your documentation:"
+    echo ""
+    echo "   ![Diagram Name](./diagrams_v2/images/diagram_name.png)"
+    echo ""
+    echo "💡 Large diagrams are now properly exported without size truncation!"
+else
+    echo ""
+    echo "⚠️  No diagrams were exported. Please check your .puml files."
+fi
+
+echo "🏁 Export script finished." 

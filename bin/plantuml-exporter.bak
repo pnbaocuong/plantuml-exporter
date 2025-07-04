@@ -3,31 +3,22 @@
 # ========================================
 # PlantUML Diagram Export Script
 # Purpose: Export all .puml files to PNG images
-# Version: 2.5 - Fixed paths for installed command
-# Date: 04/07/2025
+# Version: 2.4 - Mirror VSCode PlantUML extension configuration (clean solution)
+# Date: 03/07/2025
 # ========================================
 
 echo "🎨 Starting PlantUML Diagram Export..."
 
-# Get working directory (where user runs the command)
-WORKING_DIR="$(pwd)"
-PUML_DIR="$WORKING_DIR"
-IMAGES_DIR="$WORKING_DIR/images"
+# Get script directory
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PUML_DIR="$SCRIPT_DIR"
+IMAGES_DIR="$SCRIPT_DIR/images"
 
 # Create images directory if it doesn't exist
 mkdir -p "$IMAGES_DIR"
 
-# Check if PlantUML jar exists (try multiple locations)
-PLANTUML_JAR=""
-if [ -f "$WORKING_DIR/plantuml.jar" ]; then
-    PLANTUML_JAR="$WORKING_DIR/plantuml.jar"
-elif [ -f "$HOME/.plantuml-exporter/plantuml.jar" ]; then
-    PLANTUML_JAR="$HOME/.plantuml-exporter/plantuml.jar"
-else
-    PLANTUML_JAR="$HOME/.plantuml-exporter/plantuml.jar"
-    mkdir -p "$HOME/.plantuml-exporter"
-fi
-
+# Check if PlantUML jar exists
+PLANTUML_JAR="$SCRIPT_DIR/../plantuml.jar"
 if [ ! -f "$PLANTUML_JAR" ]; then
     echo "❌ PlantUML jar not found at: $PLANTUML_JAR"
     echo "📥 Downloading PlantUML jar..."
@@ -89,8 +80,8 @@ done
 INDEX_FILE="$IMAGES_DIR/README.md"
 echo "📝 Generating images index: $INDEX_FILE"
 
-cat > "$INDEX_FILE" << INDEXEOF
-# PlantUML Diagrams
+cat > "$INDEX_FILE" << EOF
+# Casbin Authorization Service - Diagrams
 
 Generated PNG images from PlantUML source files.
 
@@ -109,7 +100,7 @@ Generated PNG images from PlantUML source files.
 
 ## Available Diagrams
 
-INDEXEOF
+EOF
 
 # Add each image to index
 for png_file in "$IMAGES_DIR"/*.png; do
@@ -144,7 +135,7 @@ if [ $EXPORTED_COUNT -gt 0 ]; then
     echo "🎉 Diagram export completed successfully!"
     echo "📖 You can now include these images in your documentation:"
     echo ""
-    echo "   ![Diagram Name](./images/diagram_name.png)"
+    echo "   ![Diagram Name](./diagrams_v2/images/diagram_name.png)"
     echo ""
     echo "💡 Large diagrams are now properly exported without size truncation!"
 else
